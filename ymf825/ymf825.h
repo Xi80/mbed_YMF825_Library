@@ -4,32 +4,41 @@
 #include "mbed.h"
 #include "ymf825tone.h"
 
+/**
+ * @file ymf825.h
+ * @brief YMF825 library for mbed
+ * @author Luna Tsukiyono
+ * @date 2020/06/19
+ */
+
 class ymf825{
     public:   
-        struct channel{
-            bool isUsed = false;
-            uint8_t noteNumber = 0;
-        };
-
         ymf825(PinName mosi,PinName miso,PinName sck,PinName chipSelect,PinName reset);
         ymf825(SPI spi,PinName chipSelect,PinName reset);
+
+        void init(void);
 
         void sendTone(void);
         void setToneListFromGM(uint8_t ch,uint8_t num);
 
-        void noteOn(uint8_t channel,uint8_t note,uint8_t vol,uint8_t inst,unsigned short pb);
+        void noteOn(uint8_t channel,uint8_t note,uint8_t inst);
         void noteOff(uint8_t channel);
 
         void pitchBend(uint8_t channel,unsigned short pb);
+        void setVolume(uint8_t channel,uint8_t vel);
+        void setChannelVolume(uint8_t channel,uint8_t vol);
+        void setModulation(uint8_t channel,uint8_t m);
 
+        void allNotesOff(void);
+        
+        
     private:
         SPI _spi;
         DigitalOut _chipSelect,_reset;
 
-        void init(void);
-        
         void singleWrite(uint8_t addr,uint8_t data);
         void burstWrite(uint8_t addr,uint8_t *data,int length);
+
         const uint8_t fNumberTableHigh[128] = {
             0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x18,0x18,
             0x18,0x18,0x18,0x20,0x20,0x20,0x20,0x28,0x11,0x11,0x19,0x19,0x19,0x19,0x19,0x21,
@@ -72,6 +81,10 @@ class ymf825{
         };
 
         uint8_t toneList[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        uint8_t prevModulationVal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        uint8_t prevPitchBendVal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        uint8_t prevVolumeVal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        uint8_t prevChannelVolumeVal[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 };
 
 #endif

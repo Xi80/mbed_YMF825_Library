@@ -2,16 +2,24 @@
 
 
 ymf825::ymf825(PinName mosi,PinName miso,PinName sck,PinName chipSelect,PinName reset) : _spi(mosi,miso,sck),_chipSelect(chipSelect),_reset(reset){
-    _spi.frequency(8000000UL);
+    _spi.frequency(10000000UL);
     init();
 }
 
 ymf825::ymf825(SPI spi,PinName chipSelect,PinName reset) : _spi(spi),_chipSelect(chipSelect),_reset(reset){
-    _spi.frequency(8000000UL);
+    _spi.frequency(10000000UL);
     init();
 }
 
 void ymf825::init(void){
+
+    for(int i = 0;i < 16;i++){
+        prevModulationVal[i] = 0;
+        prevChannelVolumeVal[i] = 0;
+        prevPitchBendVal[i] = 8192;
+        prevVolumeVal[i] = 0;
+    }
+
     _reset = 0;
     wait_us(100);
     _reset = 1;
@@ -90,10 +98,8 @@ void ymf825::setToneListFromGM(uint8_t ch,uint8_t num){
     toneList[ch] = num;
 }
 
-void ymf825::noteOn(uint8_t channel,uint8_t note,uint8_t vol,uint8_t inst,unsigned short pb){
-    pitchBend(channel,pb);
+void ymf825::noteOn(uint8_t channel,uint8_t note,uint8_t inst){
     singleWrite( 0x0B, channel );
-    singleWrite( 0x0C, 0b0001100 );
     singleWrite( 0x0D, fNumberTableHigh[note] );
     singleWrite( 0x0E, fNumberTableLow[note] );
     singleWrite( 0x0F, 0x40 | (inst & 0x0F));
@@ -106,10 +112,41 @@ void ymf825::noteOff(uint8_t channel){
 
 void ymf825::pitchBend(uint8_t channel,unsigned short pb){
     unsigned char reg[2];
-	unsigned char pit = pb/64;
+	unsigned char pit = pb >> 6;
+    if(pit == prevPitchBendVal[channel])return;
+    prevPitchBendVal[channel] = pit;
     reg[1] = (unsigned char)((tPitTbl[pit]<<1) & 0x007e);
 	reg[0] = (unsigned char)(((tPitTbl[pit]<<2) & 0x1f00)>>8);
     singleWrite( 0x0B, channel);
 	singleWrite( 0x12, reg[0] );
 	singleWrite( 0x13, reg[1] );
+}
+
+void ymf825::setVolume(uint8_t channel,uint8_t vel){
+    if(vel == prevVolumeVal[channel])return;
+    prevVolumeVal[channel] = vel;
+    singleWrite(0x0B,channel);
+    singleWrite(0x0C,vel);
+}
+
+void ymf825::setChannelVolume(uint8_t channel,uint8_t vol){
+    if(vol == prevChannelVolumeVal[channel])return;
+    prevChannelVolumeVal[channel] = vol;
+    singleWrite(0x0B,channel);
+    singleWrite(0x10,vol);
+}
+
+void ymf825::setModulation(uint8_t channel,uint8_t m){
+    m = m >> 4;
+    if(m == prevModulationVal[channel])return;
+    prevModulationVal[channel] = m;
+    singleWrite(0x0B,channel);
+    singleWrite(17,m);
+}
+
+void ymf825::allNotesOff(void){
+    for(int i = 0;i < 16;i++){
+        singleWrite(0x0B,i);
+        singleWrite(15,0x30);
+    }
 }
